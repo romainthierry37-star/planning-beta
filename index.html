@@ -899,7 +899,7 @@ function App(){
           LIEUX.map((l,li)=>React.createElement("button",{key:l,onClick:()=>{setMLieu(l===mLieu?"":l);setMAbs("");setMFer(false);},style:{padding:"5px 10px",borderRadius:20,border:"1.5px solid "+(mLieu===l?"#1a6ed8":"#e5e7eb"),background:mLieu===l?"#1a6ed8":"#fff",color:mLieu===l?"#fff":"#555",fontWeight:600,fontSize:12,cursor:"pointer"}},LIEUX_D[li]))
         ),
         React.createElement("div",{style:{marginBottom:12}},
-          React.createElement("button",{onClick:()=>{setMFer(f=>!f);if(!mFer){setMAbs("");setMLieu("");}},style:{padding:"6px 14px",borderRadius:20,border:"1.5px solid "+(mFer?"#c2410c":"#e5e7eb"),background:mFer?"#fff0e0":"#fff",color:mFer?"#c2410c":"#555",fontWeight:700,fontSize:12,cursor:"pointer"}},"🔶 Férié travaillé (+25%)"),
+          React.createElement("button",{onClick:()=>{setMFer(f=>!f);if(!mFer){setMAbs("");setMLieu("");}},style:{padding:"6px 14px",borderRadius:20,border:"1.5px solid "+(mFer?"#c2410c":"#e5e7eb"),background:mFer?"#fff0e0":"#fff",color:mFer?"#c2410c":"#555",fontWeight:700,fontSize:12,cursor:"pointer"}},"🔶 Férié travaillé (+25%)")
         ),
         !mAbs&&React.createElement("div",null,
           React.createElement("label",{style:lb},"Horaires"),
