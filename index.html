@@ -323,32 +323,6 @@ function App(){
     const l=[...emps,emp];setEmps(l);svE(l);setNewN("");setNewH(35);setNewDeb("09h00");setNewFin("18h00");setNewJours(["Lundi","Mardi","Mercredi","Jeudi","Vendredi"]);
   };
 
-  const JOURS_SEM=["Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi","Dimanche"];
-  const JOUR_IDX={"Lundi":1,"Mardi":2,"Mercredi":3,"Jeudi":4,"Vendredi":5,"Samedi":6,"Dimanche":0};
-
-  const genererPlanning=async(emp,semaine)=>{
-    const wDays=getWD(semaine);
-    const joursActifs=emp.jours||["Lundi","Mardi","Mercredi","Jeudi","Vendredi"];
-    const deb=emp.horDeb||"09h00";
-    const fin=emp.horFin||"18h00";
-    const lieu=emp.lieuDefaut||"";
-    const nc={...cells,[emp.id]:{...(cells[emp.id]||{})}};
-    let count=0;
-    wDays.forEach(d=>{
-      const nomJour=JOURS_SEM[d.getDay()===0?6:d.getDay()-1];
-      const k=dk(d);
-      if(joursActifs.includes(nomJour)){
-        const val=lieu?(lieu+" "+deb+"/"+fin):(deb+"/"+fin);
-        nc[emp.id][k]={val,hsupp:0};
-        count++;
-      }
-    });
-    setCells(nc);
-    await svC(nc);
-    setGenResult({nom:emp.name,count,deb,fin,jours:joursActifs});
-    setGenModal(null);
-  };
-
   const expR=()=>{
     const sep="============================================================";
     let txt=sep+"\n  COMPTE RENDU - "+frM(recY,recM).toUpperCase()+"\n"+sep+"\n\n";
