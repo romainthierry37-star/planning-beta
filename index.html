@@ -214,6 +214,12 @@ function App(){
   const [newH,setNewH]=React.useState(35);
   const [feedback,setFeedback]=React.useState("");
   const [fbSent,setFbSent]=React.useState(false);
+  const [msgTexte,setMsgTexte]=React.useState("");
+  const [msgDest,setMsgDest]=React.useState("tous");
+  const [messages,setMessages]=React.useState([]);
+  const [noteJour,setNoteJour]=React.useState("");
+  const [noteDate,setNoteDate]=React.useState(dk(new Date()));
+  const [notes,setNotes]=React.useState([]);
 
   const isA=session&&session.role==="admin";
   const hSem=id=>{const e=emps.find(x=>x.id===id);return e&&e.hSem?e.hSem:35;};
@@ -234,7 +240,13 @@ function App(){
     const u3=onSnapshot(doc(db,"beta_planning",userKey+"_employees"),snap=>{
       if(snap.exists()&&snap.data().list){setEmps(snap.data().list);}
     });
-    return()=>{u1();u2();u3();};
+    const u4=onSnapshot(col(db,"beta_messages"),snap=>{
+      try{setMessages(snap.docs.filter(d=>d.id.startsWith(userKey+"_")).map(d=>({id:d.id,...d.data()})).sort((a,b)=>b.date.localeCompare(a.date)));}catch(e){}
+    });
+    const u5=onSnapshot(col(db,"beta_notes"),snap=>{
+      try{setNotes(snap.docs.filter(d=>d.id.startsWith(userKey+"_")).map(d=>({id:d.id,...d.data()})));}catch(e){}
+    });
+    return()=>{u1();u2();u3();u4();u5();};
   },[fbOk,session,userKey]);
 
   const svC=async nc=>{if(!fbOk)return;const {db,doc,setDoc}=window.__fb;setSync("Sauvegarde...");try{await setDoc(doc(db,"beta_planning",userKey+"_cells"),{data:nc});setSync("Synchronisé");}catch(e){setSync("Erreur");}};
@@ -254,6 +266,42 @@ function App(){
     if(!feedback.trim()||!fbOk)return;
     const {db,doc,setDoc}=window.__fb;
     try{await setDoc(doc(db,"beta_feedback","fb"+Date.now()),{user:session.user,secteur:session.secteur,message:feedback,date:new Date().toISOString()});setFbSent(true);setFeedback("");}catch(e){}
+  };
+
+  const sendMessage=async()=>{
+    if(!msgTexte.trim()||!fbOk)return;
+    const {db,doc,setDoc}=window.__fb;
+    try{
+      await setDoc(doc(db,"beta_messages",userKey+"_msg"+Date.now()),{
+        auteur:session.user,dest:msgDest,texte:msgTexte,
+        date:new Date().toISOString(),lu:false
+      });
+      setMsgTexte("");
+    }catch(e){}
+  };
+
+  const delMessage=async(id)=>{
+    if(!fbOk)return;
+    const {db,doc,deleteDoc}=window.__fb;
+    try{await deleteDoc(doc(db,"beta_messages",id));}catch(e){}
+  };
+
+  const addNote=async()=>{
+    if(!noteJour.trim()||!noteDate||!fbOk)return;
+    const {db,doc,setDoc}=window.__fb;
+    try{
+      await setDoc(doc(db,"beta_notes",userKey+"_note"+Date.now()),{
+        texte:noteJour,date:noteDate,auteur:session.user,
+        creeeLe:new Date().toISOString()
+      });
+      setNoteJour("");
+    }catch(e){}
+  };
+
+  const delNote=async(id)=>{
+    if(!fbOk)return;
+    const {db,doc,deleteDoc}=window.__fb;
+    try{await deleteDoc(doc(db,"beta_notes",id));}catch(e){}
   };
 
   const getCV=(empId,dStr)=>{
@@ -616,6 +664,78 @@ function App(){
     )
   );
 
+  const renderMessages=()=>{
+    const frDT=s=>new Date(s).toLocaleDateString("fr-FR",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});
+    const mesMessages=isA?messages:messages.filter(m=>m.dest==="tous"||(emps.find(e=>e.name===session.user)&&m.dest===emps.find(e=>e.name===session.user)?.id));
+    return React.createElement("div",{style:{maxWidth:560}},
+      React.createElement("h2",{style:{fontSize:20,fontWeight:800,color:"#1a1a2e",marginBottom:6}},"✉️ Messages équipe"),
+      React.createElement("div",{style:{fontSize:12,color:"#aaa",marginBottom:18}},"Communiquez avec votre équipe en temps réel"),
+      isA&&React.createElement("div",{style:{background:"#fff",borderRadius:12,padding:18,marginBottom:16,border:"1px solid #e5e7eb"}},
+        React.createElement("div",{style:{fontSize:13,fontWeight:800,color:"#1a1a2e",marginBottom:12}},"Nouveau message"),
+        React.createElement("div",{style:{marginBottom:10}},
+          React.createElement("label",{style:lb},"Destinataire"),
+          React.createElement("select",{value:msgDest,onChange:e=>setMsgDest(e.target.value),style:ip},
+            React.createElement("option",{value:"tous"},"📢 Toute l'équipe"),
+            emps.map(e=>React.createElement("option",{key:e.id,value:e.id},"👤 "+e.name))
+          )
+        ),
+        React.createElement("textarea",{value:msgTexte,onChange:e=>setMsgTexte(e.target.value),placeholder:"Votre message...",style:{width:"100%",border:"1.5px solid #e5e7eb",borderRadius:9,padding:"10px 12px",fontSize:13,color:"#1a1a2e",background:"#f8f9fa",minHeight:80,resize:"vertical",fontFamily:"inherit",boxSizing:"border-box",marginBottom:10}}),
+        React.createElement("button",{onClick:sendMessage,disabled:!msgTexte.trim(),style:{width:"100%",padding:"10px 0",borderRadius:8,border:"none",background:msgTexte.trim()?"#1a6ed8":"#e5e7eb",color:msgTexte.trim()?"#fff":"#aaa",fontWeight:700,fontSize:14,cursor:msgTexte.trim()?"pointer":"default"}},"Envoyer ✉️")
+      ),
+      React.createElement("div",{style:{background:"#fff",borderRadius:12,padding:18,border:"1px solid #e5e7eb"}},
+        React.createElement("div",{style:{fontSize:13,fontWeight:800,color:"#1a1a2e",marginBottom:12}},"Messages ("+mesMessages.length+")"),
+        mesMessages.length===0?React.createElement("div",{style:{color:"#ccc",fontSize:13,textAlign:"center",padding:"20px 0"}},"Aucun message pour le moment"):
+        mesMessages.map(m=>{
+          const destLabel=m.dest==="tous"?"📢 Toute l'équipe":"👤 "+(emps.find(e=>e.id===m.dest)?.name||m.dest);
+          return React.createElement("div",{key:m.id,style:{padding:"12px 14px",background:"#f8f9fa",borderRadius:10,marginBottom:8,borderLeft:"4px solid #1a6ed8"}},
+            React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}},
+              React.createElement("div",null,
+                React.createElement("span",{style:{fontWeight:700,fontSize:13,color:"#1a1a2e"}},m.auteur),
+                React.createElement("span",{style:{fontSize:11,color:"#aaa",marginLeft:8}},"→ "+destLabel)
+              ),
+              React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8}},
+                React.createElement("span",{style:{fontSize:10,color:"#bbb"}},frDT(m.date)),
+                isA&&React.createElement("button",{onClick:()=>delMessage(m.id),style:{background:"none",border:"none",color:"#ef4444",cursor:"pointer",fontSize:14}},"×")
+              )
+            ),
+            React.createElement("div",{style:{fontSize:13,color:"#333",lineHeight:1.5}},m.texte)
+          );
+        })
+      )
+    );
+  };
+
+  const renderNotes=()=>{
+    const frDS2=s=>new Date(s+"T12:00").toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long"});
+    const notesTriees=[...notes].sort((a,b)=>a.date.localeCompare(b.date));
+    return React.createElement("div",{style:{maxWidth:560}},
+      React.createElement("h2",{style:{fontSize:20,fontWeight:800,color:"#1a1a2e",marginBottom:6}},"📝 Notes du planning"),
+      React.createElement("div",{style:{fontSize:12,color:"#aaa",marginBottom:18}},"Ajoutez des notes sur des journées spécifiques"),
+      isA&&React.createElement("div",{style:{background:"#fff",borderRadius:12,padding:18,marginBottom:16,border:"1px solid #e5e7eb"}},
+        React.createElement("div",{style:{fontSize:13,fontWeight:800,color:"#1a1a2e",marginBottom:12}},"Ajouter une note"),
+        React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr auto",gap:8,marginBottom:10}},
+          React.createElement("div",null,
+            React.createElement("label",{style:lb},"Date"),
+            React.createElement("input",{type:"date",value:noteDate,onChange:e=>setNoteDate(e.target.value),style:ip})
+          )
+        ),
+        React.createElement("textarea",{value:noteJour,onChange:e=>setNoteJour(e.target.value),placeholder:"Ex: Réunion d'équipe à 14h, Inventaire ce soir, Fermeture exceptionnelle...",style:{width:"100%",border:"1.5px solid #e5e7eb",borderRadius:9,padding:"10px 12px",fontSize:13,color:"#1a1a2e",background:"#f8f9fa",minHeight:80,resize:"vertical",fontFamily:"inherit",boxSizing:"border-box",marginBottom:10}}),
+        React.createElement("button",{onClick:addNote,disabled:!noteJour.trim()||!noteDate,style:{width:"100%",padding:"10px 0",borderRadius:8,border:"none",background:noteJour.trim()&&noteDate?"#059669":"#e5e7eb",color:noteJour.trim()&&noteDate?"#fff":"#aaa",fontWeight:700,fontSize:14,cursor:noteJour.trim()&&noteDate?"pointer":"default"}},"Ajouter la note 📝")
+      ),
+      React.createElement("div",{style:{background:"#fff",borderRadius:12,padding:18,border:"1px solid #e5e7eb"}},
+        React.createElement("div",{style:{fontSize:13,fontWeight:800,color:"#1a1a2e",marginBottom:12}},"Notes ("+notes.length+")"),
+        notesTriees.length===0?React.createElement("div",{style:{color:"#ccc",fontSize:13,textAlign:"center",padding:"20px 0"}},"Aucune note pour le moment"):
+        notesTriees.map(n=>React.createElement("div",{key:n.id,style:{padding:"12px 14px",background:"#f8f9fa",borderRadius:10,marginBottom:8,borderLeft:"4px solid #059669"}},
+          React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}},
+            React.createElement("div",{style:{fontSize:12,fontWeight:700,color:"#059669",textTransform:"capitalize"}},frDS2(n.date)),
+            isA&&React.createElement("button",{onClick:()=>delNote(n.id),style:{background:"none",border:"none",color:"#ef4444",cursor:"pointer",fontSize:14}},"×")
+          ),
+          React.createElement("div",{style:{fontSize:13,color:"#333",lineHeight:1.5}},n.texte)
+        ))
+      )
+    );
+  };
+
   const renderFeedback=()=>React.createElement("div",{style:{maxWidth:560}},
     React.createElement("h2",{style:{fontSize:20,fontWeight:800,color:"#1a1a2e",marginBottom:6}},"💬 Votre avis"),
     React.createElement("div",{style:{fontSize:13,color:"#aaa",marginBottom:20}},"Votre retour nous aide à améliorer l'outil. Merci pour votre participation à la bêta !"),
@@ -714,6 +834,8 @@ function App(){
         NB("conges",mob?"🏖️":"🏖️ Congés"),
         NB("recap",mob?"📊":"📊 Rapport"),
         NB("equipe",mob?"👥":"👥 Équipe"),
+        NB("messages",mob?"✉️":"✉️ Messages"),
+        NB("notes",mob?"📝":"📝 Notes"),
         NB("feedback",mob?"💬":"💬 Avis")
       ),
       React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6}},
@@ -733,6 +855,8 @@ function App(){
       view==="conges"&&renderConges(),
       view==="recap"&&renderRecap(),
       view==="equipe"&&renderEquipe(),
+      view==="messages"&&renderMessages(),
+      view==="notes"&&renderNotes(),
       view==="feedback"&&renderFeedback()
     ),
     renderModal()
